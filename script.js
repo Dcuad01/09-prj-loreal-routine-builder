@@ -46,7 +46,11 @@ const CATEGORY_MAP = {
   if (clearSelectedBtn)
     clearSelectedBtn.addEventListener("click", clearSelection);
   if (generateBtn) generateBtn.addEventListener("click", onGenerateRoutine);
-  if (chatForm) chatForm.addEventListener("submit", onChatSubmit);
+  if (chatForm) {
+    chatForm.addEventListener("submit", onChatSubmit);
+    // Ensure chat form picks up existing .chat-form CSS styles
+    chatForm.classList.add("chat-form");
+  }
 })();
 
 /* Data */
@@ -74,9 +78,14 @@ function displayProducts(products) {
         <div class="product-info">
           <h3>${p.name}</h3>
           <p>${p.brand}</p>
-          <small><button class="more" data-id="${
-            p.id
-          }" type="button">Details</button></small>
+          <small>
+            <button class="more" data-id="${
+              p.id
+            }" type="button" aria-expanded="false">Details</button>
+          </small>
+        </div>
+        <div class="product-desc" hidden>
+          <p>${p.description || ""}</p>
         </div>
       </div>`;
     })
@@ -94,16 +103,23 @@ function displayProducts(products) {
     });
   });
 
+  // Toggle inline description instead of dumping into chat
   productsContainer.querySelectorAll(".more").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
-      const id = Number(btn.dataset.id);
-      const prod = allProducts.find((x) => x.id === id);
-      if (!prod) return;
-      addChat(
-        "assistant",
-        `**${prod.name} — ${prod.brand}**\n\n${prod.description}`
-      );
+      const card = btn.closest(".product-card");
+      const desc = card?.querySelector(".product-desc");
+      if (!desc) return;
+      const isHidden = desc.hasAttribute("hidden");
+      if (isHidden) {
+        desc.removeAttribute("hidden");
+        btn.textContent = "Hide";
+        btn.setAttribute("aria-expanded", "true");
+      } else {
+        desc.setAttribute("hidden", "");
+        btn.textContent = "Details";
+        btn.setAttribute("aria-expanded", "false");
+      }
     });
   });
 }
@@ -153,6 +169,40 @@ function ensureString(val) {
   }
 }
 
+/* Robust extractor: safely get assistant text from any Worker shape */
+function extractAssistantText(data) {
+  // 1) Our Worker preferred shape
+  if (typeof data?.text === "string" && data.text.trim()) return data.text;
+
+  // 2) Responses API convenience
+  if (typeof data?.output_text === "string" && data.output_text.trim())
+    return data.output_text;
+
+  // 3) Chat Completions
+  const cc = data?.choices?.[0]?.message?.content;
+  if (typeof cc === "string" && cc.trim()) return cc;
+
+  // 4) Responses API structured output fallback
+  try {
+    const items = Array.isArray(data?.output) ? data.output : [];
+    for (const it of items) {
+      const parts = Array.isArray(it?.content) ? it.content : [];
+      for (const part of parts) {
+        if (
+          part?.type === "output_text" &&
+          typeof part?.text === "string" &&
+          part.text.trim()
+        ) {
+          return part.text;
+        }
+      }
+    }
+  } catch {}
+
+  // 5) If Worker accidentally returned an object like {format, verbosity}, do NOT surface it to users.
+  return "";
+}
+
 /* Worker call helper: send payload to the Cloudflare Worker and safely parse reply */
 async function callWorker(body) {
   try {
@@ -162,11 +212,8 @@ async function callWorker(body) {
       body: JSON.stringify(body),
     });
     const data = await r.json().catch(() => ({}));
-    const text =
-      data.text ||
-      data.output_text ||
-      (data?.choices?.[0]?.message?.content ?? "");
-    return ensureString(text);
+    const text = extractAssistantText(data);
+    return text || "I couldn’t generate that. Please try again.";
   } catch {
     return "Error contacting the assistant.";
   }
@@ -227,7 +274,7 @@ async function onChatSubmit(e) {
   addChat("user", input);
   lastQEl.textContent = `Last question: ${input}`;
 
-  // Build payload: system + history + current user message
+  // Build payload: system + history ONLY (avoid double-sending the same user msg)
   const payload = {
     messages: [
       {
@@ -236,7 +283,6 @@ async function onChatSubmit(e) {
           "You are L’Oréal Care Guide. On-topic only. Output 3–5 sentences: Considerations then Conclusion. On-label claims only. Refuse off-topic.",
       },
       ...messages,
-      { role: "user", content: input },
     ],
   };
   const text = await callWorker(payload);
