@@ -252,6 +252,66 @@ function filterAndRender(value) {
   displayProducts(filtered);
 }
 
+/* --- Catalog awareness helpers: detect category + build product context --- */
+function detectCategoryFromText(text) {
+  const t = (text || "").toLowerCase();
+  if (/\b(suncare|sunscreen|spf|uv|sun\s?screen)\b/.test(t)) return "suncare";
+  if (/\b(cleanser|wash|clean|gel cleanser|micellar)\b/.test(t))
+    return "cleanser";
+  if (
+    /\b(moisturizer|moisturiser|cream|lotion|serum|hydrating|skincare)\b/.test(
+      t
+    )
+  )
+    return "moisturizer";
+  if (/\b(hair\s?care|shampoo|conditioner|mask)\b/.test(t)) return "haircare";
+  if (/\b(makeup|foundation|mascara|lipstick|concealer|blush)\b/.test(t))
+    return "makeup";
+  if (/\b(hair\s?color|dye|coloring)\b/.test(t)) return "hair color";
+  if (/\b(style|styling|pomade|wax|gel|spray)\b/.test(t)) return "hair styling";
+  if (/\b(men|grooming|beard)\b/.test(t)) return "men's grooming";
+  if (/\b(fragrance|perfume|cologne)\b/.test(t)) return "fragrance";
+  return null;
+}
+function pickCatalogForCategory(cat, limit = 6) {
+  if (!cat) return [];
+  const cats = CATEGORY_MAP[cat] || [cat];
+  let items = allProducts.filter((p) => cats.includes(p.category));
+  // Tighten suncare to sunscreen-like items if present
+  if (cat === "suncare") {
+    const re = /(spf|sunscreen|uv)/i;
+    const focused = items.filter(
+      (p) => re.test(p.name) || re.test(p.description || "")
+    );
+    if (focused.length) items = focused;
+  }
+  return items.slice(0, limit).map((p) => ({
+    id: p.id,
+    name: p.name,
+    brand: p.brand,
+    category: p.category,
+  }));
+}
+function collectContextProductsFromInput(input) {
+  // Prefer user's selected products if any
+  const selected = Array.from(selectedIds)
+    .map((id) => allProducts.find((p) => p.id === id))
+    .filter(Boolean)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      brand: p.brand,
+      category: p.category,
+    }));
+  if (selected.length) return selected.slice(0, 10);
+  // Else derive from input or current filter
+  const detected =
+    detectCategoryFromText(input) ||
+    (categoryFilter && categoryFilter.value) ||
+    null;
+  return pickCatalogForCategory(detected, 6);
+}
+
 /* --- Chat submit handler --- */
 function handleChatSubmit(e) {
   e.preventDefault();
@@ -259,6 +319,21 @@ function handleChatSubmit(e) {
   if (!input) return;
   chatForm.reset();
   addChat("user", input);
+
+  // Augment the last user turn with catalog context so assistant recommends actual products
+  const candidates = collectContextProductsFromInput(input);
+  if (
+    candidates.length &&
+    messages.length &&
+    messages[messages.length - 1].role === "user"
+  ) {
+    const contextNote =
+      "Context: Use ONLY the L’Oréal products listed below to answer. Recommend 1–3 specific items and explain briefly. Do not direct off-site unless asked.\nProducts JSON:\n";
+    const content = `${input}\n\n${contextNote}${JSON.stringify(
+      candidates
+    ).slice(0, 6000)}`;
+    messages[messages.length - 1] = { role: "user", content };
+  }
 
   showPending();
   callWorker({
