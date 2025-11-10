@@ -22,6 +22,5 @@ Users will be able to browse real L’Oréal brand products, select the ones the
 
 ## Backend
 
-- All AI calls are proxied through a Cloudflare Worker at https://lorealchatbot.cuadra33.workers.dev/.
-- No API keys in the browser. If you fork, replace WORKER_URL in script.js with your own Worker URL.
-- If CORS blocks fetches, configure the Worker to allow your site’s origin.
+- All AI calls are proxied via Cloudflare Worker at https://lorealchatbot.cuadra33.workers.dev/ and the frontend never calls OpenAI directly.
+- If you fork this project, change WORKER_URL in script.js to your own Worker.

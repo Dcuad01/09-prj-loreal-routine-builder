@@ -40,36 +40,46 @@
       </div>
 
       <!-- Products Grid -->
-      <div id="productsContainer" class="products-grid"></div>
+      <div id="productsContainer" class="products-grid grid"></div>
 
       <!-- Selected Products -->
       <div class="selected-products">
         <h2>Selected Products</h2>
-        <div id="selectedProductsList"></div>
-        <button id="clearSelected" type="button" class="clear-btn">
-          Clear
-        </button>
+        <div id="selectedBar" class="selected-bar">
+          <div id="selectedProductsList"></div>
+          <div class="selected-actions">
+            <button id="clearSelected" type="button" class="clear-btn">
+              Clear
+            </button>
+          </div>
+        </div>
       </div>
 
       <!------- Chat Area ------->
       <section class="chatbox">
-        <h2>Let's Build Your Routine</h2>
+        <div class="chat-head">
+          <h2>Let's Build Your Routine</h2>
+          <div class="chat-actions">
+            <button id="generateRoutine" class="generate-btn" type="button">
+              Generate Routine
+            </button>
+          </div>
+        </div>
         <div id="lastQuestion" class="last-q" aria-live="polite"></div>
         <div id="chatWindow" class="chat-window" aria-live="polite"></div>
-        <div class="chat-actions">
-          <button id="generateRoutine" class="generate-btn" type="button">
-            Generate Routine
+        <form id="chatForm" class="chat-form">
+          <input
+            name="userInput"
+            placeholder="Ask about L’Oréal products or routines"
+            maxlength="300"
+            required
+          />
+          <button type="submit" id="sendBtn" class="btn-send">
+            <i class="fa-solid fa-paper-plane"></i>
+            <span class="visually-hidden">Send</span>
           </button>
-          <form id="chatForm">
-            <input
-              name="userInput"
-              placeholder="Ask about L’Oréal products or routines"
-              maxlength="300"
-              required
-            />
-            <button type="submit">Send</button>
-          </form>
-        </div>
+        </form>
+        <div id="debug" style="display: none"></div>
         <p class="disclaimer">
           No diagnosis or disease claims. Patch-test new actives. Consult a
           professional for allergies, pregnancy, or medical conditions.
