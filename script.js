@@ -451,3 +451,15 @@ document.addEventListener("DOMContentLoaded", wireHandlers);
 /* =========================================
    END
 ========================================= */
+
+// Enforce: no autocomplete/autofill suggestions on the chat input
+if (chatForm) {
+  chatForm.setAttribute("autocomplete", "off");
+  const chatInputEl = chatForm.querySelector('input[name="userInput"]');
+  if (chatInputEl) {
+    chatInputEl.setAttribute("autocomplete", "off");
+    chatInputEl.setAttribute("autocorrect", "off");
+    chatInputEl.setAttribute("autocapitalize", "none");
+    chatInputEl.setAttribute("spellcheck", "false");
+  }
+}

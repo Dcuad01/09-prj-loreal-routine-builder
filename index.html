@@ -67,12 +67,16 @@
         </div>
         <div id="lastQuestion" class="last-q" aria-live="polite"></div>
         <div id="chatWindow" class="chat-window" aria-live="polite"></div>
-        <form id="chatForm" class="chat-form">
+        <form id="chatForm" class="chat-form" autocomplete="off">
           <input
             name="userInput"
             placeholder="Ask about L’Oréal products or routines"
             maxlength="300"
             required
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="none"
+            spellcheck="false"
           />
           <button type="submit" id="sendBtn" class="btn-send">
             <i class="fa-solid fa-paper-plane"></i>
